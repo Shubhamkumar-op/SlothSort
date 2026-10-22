@@ -1,30 +1,41 @@
-# 🦥 SlothSort — Local AI File Organizer
+# 🦥 SlothSort AI
 
-SlothSort is a local AI-powered file organization tool that helps users classify files and preview suggested destinations before moving them. It uses a locally running Ollama model and requires human approval before file operations.
+**Local AI-Powered File Organizer with Human Approval**
+
+SlothSort is a Python-based file organization tool that uses a locally running AI model through Ollama to classify files using their metadata and suggest an organized folder structure. Users can review the proposed changes before approving file movement.
+
+## 📸 Screenshots
+
+### 1. Dashboard
+![SlothSort Dashboard](docs/screenshots/1.png)
+
+### 2. AI Organization Preview
+![AI Organization Preview](docs/screenshots/2.png)
+
+### 3. Organization Result
+![Organization Result](docs/screenshots/3.png)
 
 ## ✨ Features
 
-- **File scanning:** Detects eligible files and collects metadata such as filename, extension, size, and modification time.
-- **SHA-256 hashing:** Calculates file hashes without loading the entire file into memory.
-- **Local AI classification:** Uses Ollama with the `gemma3:4b` model to suggest file categories and filenames.
-- **Organization preview:** Shows proposed source and destination paths before any move.
-- **Human approval:** Requires explicit approval before executing file operations.
-- **Conflict detection:** Identifies existing destinations rather than intentionally overwriting them.
-- **Path validation:** Rejects invalid categories and unsafe relative paths.
-- **Audit logging:** Records file operation outcomes in a JSON Lines audit log.
-- **Streamlit dashboard:** Provides a simple interface for reviewing organization plans.
-- **Automated tests:** Includes scanner and executor tests using `pytest`.
+- 🤖 Local AI-powered file classification using Ollama and Gemma
+- 📁 Automatic categorization into Documents, Images, Code, Archives, Videos, Audio, and Other
+- 👀 Preview proposed file movements before execution
+- ✅ Human approval required before organizing files
+- 🛡️ Path validation and destination conflict checks
+- 🧾 JSONL audit log for file operations
+- 🧪 Automated tests using pytest
+- 🔒 File metadata-based classification without sending files to a cloud AI service
 
-## 🧰 Tech Stack
+## 🛠️ Tech Stack
 
-- Python 3.13
+- Python
 - Streamlit
 - Ollama
-- Gemma 3 (`gemma3:4b`)
-- Requests
+- Gemma 3
 - Pytest
+- Git
 
-## 🏗️ Project Structure
+## 📂 Project Structure
 
 ```text
 SlothSort/
@@ -36,96 +47,93 @@ SlothSort/
 ├── tests/
 │   ├── test_scanner.py
 │   └── test_executor.py
-├── sample_data/
-│   └── test_files/
-├── test_scanner_manual.py
-├── test_ai_planner_manual.py
-├── test_combined_planner.py
-├── test_executor_manual.py
+├── demo_data/
+├── docs/
+│   └── screenshots/
+│       ├── 1.png
+│       ├── 2.png
+│       └── 3.png
 ├── .gitignore
 ├── LICENSE
-└── README.md
+├── README.md
+└── requirements.txt
 ```
 
 ## ⚙️ Prerequisites
 
-Install Python and [Ollama](https://ollama.com/). You need the Gemma model available locally.
+- Python 3.10 or newer
+- Ollama installed and running
+- Git
 
-Pull the model:
+## 🚀 Installation and Setup
 
-```powershell
-ollama pull gemma3:4b
-```
+### 1. Clone the repository
 
-Ensure Ollama is running before using AI classification.
-
-## 🚀 Installation
-
-Clone the repository and enter its directory:
-
-```powershell
-git clone YOUR_REPOSITORY_URL
+```bash
+git clone https://github.com/Shubhamkumar-op/SlothSort.git
 cd SlothSort
 ```
 
-Create and activate a virtual environment on Windows:
+### 2. Create and activate a virtual environment
+
+**Windows PowerShell**
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+### 3. Install dependencies
 
-```powershell
-python -m pip install streamlit requests pytest
+```bash
+pip install -r requirements.txt
 ```
 
-## ▶️ Run the Dashboard
+### 4. Download the local AI model
 
-From the project root, run:
-
-```powershell
-python -m streamlit run src/app.py
+```bash
+ollama pull gemma3:4b
 ```
 
-Open the local URL displayed in the terminal, usually `http://localhost:8501`.
+Ensure Ollama is running before launching the application.
 
-The current MVP operates only on `sample_data/test_files`.
+### 5. Start SlothSort
+
+```bash
+streamlit run src/app.py
+```
+
+Open the local URL displayed in your terminal.
 
 ## 🧪 Run Tests
 
-Run the automated test suite:
-
-```powershell
+```bash
 python -m pytest tests/ -v
 ```
 
-The current test suite contains 10 tests covering scanner behavior, hashing, approval requirements, destination conflicts, category validation, path traversal rejection, and an approved move in a temporary test directory.
+## 🔐 Safety Design
 
-## 🔒 Safety Design
+- The AI generates suggestions; it does not directly execute file operations.
+- The user must approve the organization plan.
+- The application validates file paths and category names.
+- Existing destination files and duplicate destinations are treated as conflicts.
+- Actual file movement is restricted to the project's recognized demo folders.
+- File operations are recorded in an audit log.
 
-- The dashboard is restricted to the sample-data directory.
-- The AI receives file metadata rather than file contents.
-- Suggested categories and filenames are validated.
-- Existing destinations are treated as conflicts.
-- Execution requires explicit approval.
-- Tests use temporary directories for isolated file-movement checks.
+**Note:** Always test with sample files before using any file organizer on important data. The included demo files are intended for demonstration, not for testing actual document or media contents.
 
-**Important:** This is an MVP. Review every proposed operation before approving it. File-operation safeguards should be tested further before using the tool on important personal data.
+## 🔮 Future Improvements
 
-## 🛣️ Future Improvements
-
-- Add more executor security tests.
-- Improve error handling and recovery for interrupted file operations.
-- Add configurable folder selection with clear safety boundaries.
-- Improve the dashboard with filters and richer file metadata.
-- Add CI with automated tests on every pull request.
-
-## 👨‍💻 Project Status
-
-SlothSort is an actively developed portfolio project focused on local AI, file-system automation, and human-in-the-loop safety.
+- Improved classification for CSV, JSON, and additional file types
+- Undo and recovery support
+- Better duplicate-file detection
+- Expanded automated security and execution tests
+- Support for configurable file categories
 
 ## 📄 License
 
-See the repository's `LICENSE` file for license terms.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
+
+---
+
+**Built as a local-AI project exploring safer, human-approved file organization.**
