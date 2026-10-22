@@ -17,37 +17,51 @@ st.set_page_config(
 )
 
 st.title("🦥 SlothSort AI")
-st.caption(
-    "Local AI-powered file organization with human approval."
-)
+st.caption("Local AI-powered file organization with human approval.")
 
 st.info(
-    "Files are analyzed using local Ollama. "
-    "No files are moved until you explicitly approve the plan."
+    "SlothSort uses local Ollama AI to classify file metadata. "
+    "Review the plan before approving any file movement."
 )
 
-# MVP safety boundary: operate only on the sample folder.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SAMPLE_FOLDER = (
-    PROJECT_ROOT / "sample_data" / "test_files"
-).resolve()
 
-st.subheader("1. Selected folder")
-st.code(str(SAMPLE_FOLDER))
+FOLDERS = {
+    "Demo Files": (PROJECT_ROOT / "demo_data").resolve(),
+    "Sample Test Files": (
+        PROJECT_ROOT / "sample_data" / "test_files"
+    ).resolve(),
+}
 
-if not SAMPLE_FOLDER.is_dir():
-    st.error("Sample folder does not exist.")
+st.subheader("1. Choose a folder")
+
+folder_label = st.selectbox(
+    "Folder to scan",
+    list(FOLDERS.keys()),
+)
+
+selected_folder = FOLDERS[folder_label]
+
+st.code(str(selected_folder))
+
+if not selected_folder.is_dir():
+    st.error("Selected folder does not exist.")
     st.stop()
 
+if (
+    "slothsort_root" in st.session_state
+    and st.session_state["slothsort_root"] != str(selected_folder)
+):
+    st.session_state.pop("slothsort_preview", None)
+    st.session_state.pop("slothsort_root", None)
 
 if st.button("Scan and Generate Plan", type="primary"):
-    # Always discard an old plan before generating a new one.
     st.session_state.pop("slothsort_preview", None)
     st.session_state.pop("slothsort_root", None)
 
     try:
         with st.spinner("Scanning files and asking local Gemma..."):
-            files = scan_folder(str(SAMPLE_FOLDER))
+            files = scan_folder(str(selected_folder))
 
             usable_files = [
                 item for item in files
@@ -56,9 +70,8 @@ if st.button("Scan and Generate Plan", type="primary"):
 
             if not usable_files:
                 st.warning(
-                    "No eligible files found. "
-                    "Place a new test file directly in "
-                    "sample_data/test_files and scan again."
+                    "No eligible files found. Add files directly "
+                    "inside the selected folder and scan again."
                 )
                 st.stop()
 
@@ -68,20 +81,16 @@ if st.button("Scan and Generate Plan", type="primary"):
 
             for index, file_info in enumerate(usable_files):
                 plans.append(plan_file(file_info))
-                progress.progress(
-                    (index + 1) / len(usable_files)
-                )
+                progress.progress((index + 1) / len(usable_files))
 
             preview = build_organization_plan(
-                str(SAMPLE_FOLDER),
+                str(selected_folder),
                 usable_files,
                 plans,
             )
 
             st.session_state["slothsort_preview"] = preview
-            st.session_state["slothsort_root"] = str(
-                SAMPLE_FOLDER
-            )
+            st.session_state["slothsort_root"] = str(selected_folder)
 
             progress.empty()
 
@@ -91,40 +100,28 @@ if st.button("Scan and Generate Plan", type="primary"):
 
 preview = st.session_state.get("slothsort_preview")
 
-if preview:
+if preview and st.session_state.get("slothsort_root") == str(selected_folder):
     st.subheader("2. Review the organization plan")
 
     st.warning(
-        "Review every source and destination carefully. "
-        "Existing destinations are conflicts and must not "
-        "be overwritten."
+        "Review all proposed paths. Existing destinations and "
+        "duplicate destinations are treated as conflicts."
     )
 
-    table_rows = []
+    rows = []
 
     for item in preview:
-        try:
-            destination_display = str(
-                Path(item["destination"]).relative_to(SAMPLE_FOLDER)
-            )
-        except ValueError:
-            destination_display = item["destination"]
-
-        table_rows.append({
-            "Source": str(
-                Path(item["source"]).relative_to(SAMPLE_FOLDER)
+        rows.append({
+            "Source": str(Path(item["source"]).relative_to(selected_folder)),
+            "Destination": str(
+                Path(item["destination"]).relative_to(selected_folder)
             ),
-            "Destination": destination_display,
             "Category": item["category"],
             "Status": item["status"],
             "Reason": item["reason"],
         })
 
-    st.dataframe(
-        table_rows,
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(rows, use_container_width=True, hide_index=True)
 
     ready_items = [
         item for item in preview
@@ -142,46 +139,27 @@ if preview:
     ]
 
     col1, col2, col3 = st.columns(3)
-
     col1.metric("Ready for review", len(ready_items))
     col2.metric("Conflicts", len(conflicts))
     col3.metric("Already organized", len(already_in_place))
 
     if conflicts:
-        st.error(
-            "Conflicts detected. No organization will be allowed "
-            "until the conflicts are resolved and a fresh plan "
-            "is generated."
-        )
-
-    if already_in_place:
-        st.info(
-            "Some files are already at their suggested destination "
-            "and will not be moved."
-        )
+        st.error("Resolve all conflicts and generate a fresh plan.")
 
     confirmed = st.checkbox(
-        "I reviewed the complete plan and approve moving "
-        "the eligible files inside sample_data/test_files."
-    )
-
-    can_execute = (
-        confirmed
-        and bool(ready_items)
-        and not conflicts
+        f"I reviewed the plan and approve moving files only inside "
+        f"the {folder_label} folder."
     )
 
     if st.button(
         "Approve and Organize",
         type="primary",
-        disabled=not can_execute,
+        disabled=not confirmed or not ready_items or bool(conflicts),
     ):
         try:
-            with st.spinner(
-                "Revalidating and organizing files..."
-            ):
+            with st.spinner("Revalidating and organizing files..."):
                 result = execute_organization_plan(
-                    st.session_state["slothsort_root"],
+                    str(selected_folder),
                     preview,
                     approved=True,
                 )
@@ -191,14 +169,10 @@ if preview:
 
             if result["status"] == "completed":
                 st.success(
-                    f"Organization complete! "
-                    f"{len(result['moved'])} file(s) moved."
+                    f"Organization complete! {len(result['moved'])} file(s) moved."
                 )
             else:
-                st.warning(
-                    f"Execution finished with status: "
-                    f"{result['status']}"
-                )
+                st.warning(f"Execution status: {result['status']}")
 
             if result["errors"]:
                 st.subheader("Execution errors")
@@ -218,9 +192,5 @@ if preview:
         st.session_state.pop("slothsort_root", None)
         st.rerun()
 
-
 st.divider()
-
-st.caption(
-    "SlothSort MVP · Local Gemma · Human-approved file operations"
-)
+st.caption("SlothSort MVP · Local Gemma · Human-approved file operations")

@@ -1,0 +1,1 @@
+﻿SlothSort project notes and development plan.

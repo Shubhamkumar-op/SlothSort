@@ -7,13 +7,18 @@ from datetime import datetime, timezone
 
 
 ALLOWED_CATEGORIES = {
-    "Documents", "Images", "Code", "Archives",
-    "Videos", "Audio", "Other",
+    "Documents",
+    "Images",
+    "Code",
+    "Archives",
+    "Videos",
+    "Audio",
+    "Other",
 }
 
 
 def build_organization_plan(root_folder, files, plans):
-    """Build a read-only preview. Do not create folders or move files."""
+    """Build a read-only organization preview."""
 
     root = Path(root_folder).resolve(strict=True)
 
@@ -67,8 +72,6 @@ def build_organization_plan(root_folder, files, plans):
                 raise ValueError("Original extension must be preserved")
 
         destination = root / folder / name
-
-        # Resolve without creating the destination folder.
         destination = destination.parent.resolve() / destination.name
 
         if not destination.is_relative_to(root):
@@ -100,7 +103,7 @@ def build_organization_plan(root_folder, files, plans):
 
 
 def execute_organization_plan(root_folder, preview, approved=False):
-    """Move approved files without overwriting existing destinations."""
+    """Move approved files only within a recognized project test folder."""
 
     if approved is not True:
         return {
@@ -110,12 +113,15 @@ def execute_organization_plan(root_folder, preview, approved=False):
         }
 
     root = Path(root_folder).resolve(strict=True)
-    expected = (
-        Path.cwd() / "sample_data" / "test_files"
-    ).resolve()
+    project_root = Path(__file__).resolve().parent.parent
 
-    if root != expected or not root.is_dir():
-        raise ValueError("Execution is restricted to sample_data/test_files")
+    allowed_roots = {
+        (project_root / "sample_data" / "test_files").resolve(),
+        (project_root / "demo_data").resolve(),
+    }
+
+    if root not in allowed_roots or not root.is_dir():
+        raise ValueError("Execution is restricted to project demo folders")
 
     moved = []
     errors = []
@@ -128,6 +134,7 @@ def execute_organization_plan(root_folder, preview, approved=False):
         source = Path(item["source"])
         destination = Path(item["destination"])
         created_destination = False
+        record = None
 
         try:
             if item.get("status") != "ready_for_review":
@@ -147,7 +154,6 @@ def execute_organization_plan(root_folder, preview, approved=False):
 
             destination.parent.mkdir(parents=True, exist_ok=True)
 
-            # Exclusive creation fails if another file already exists.
             fd = os.open(
                 destination,
                 os.O_WRONLY | os.O_CREAT | os.O_EXCL,
@@ -162,7 +168,6 @@ def execute_organization_plan(root_folder, preview, approved=False):
                     target.flush()
                     os.fsync(target.fileno())
 
-                # Remove source only after copy succeeds.
                 source.unlink()
 
             except Exception:
@@ -187,18 +192,15 @@ def execute_organization_plan(root_folder, preview, approved=False):
                 "result": "failed",
                 "error": str(error),
             }
-
             errors.append(record)
 
-            # Do not delete a destination that existed before this operation.
             if created_destination and source.exists():
                 destination.unlink(missing_ok=True)
 
         finally:
-            if 'record' in locals():
+            if record is not None:
                 with audit_path.open("a", encoding="utf-8") as log:
                     log.write(json.dumps(record) + "\n")
-                del record
 
     return {
         "status": "completed" if not errors else "completed_with_errors",

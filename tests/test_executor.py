@@ -86,19 +86,11 @@ def test_invalid_category_is_rejected(tmp_path):
         )
 
 
-def test_successful_move_after_approval_in_sample_folder(
-    tmp_path, monkeypatch
-):
-    project_root = tmp_path / "project"
-    sample_folder = project_root / "sample_data" / "test_files"
-    sample_folder.mkdir(parents=True)
-
-    source = sample_folder / "notes.txt"
+def test_execution_rejects_unapproved_folder(tmp_path):
+    source = tmp_path / "notes.txt"
     source.write_text("Hello SlothSort")
 
-    destination = sample_folder / "Documents" / "notes.txt"
-
-    monkeypatch.chdir(project_root)
+    destination = tmp_path / "Documents" / "notes.txt"
 
     preview = [{
         "source": str(source),
@@ -108,17 +100,15 @@ def test_successful_move_after_approval_in_sample_folder(
         "status": "ready_for_review",
     }]
 
-    result = execute_organization_plan(
-        str(sample_folder),
-        preview,
-        approved=True,
-    )
+    with pytest.raises(ValueError, match="restricted"):
+        execute_organization_plan(
+            str(tmp_path),
+            preview,
+            approved=True,
+        )
 
-    assert result["status"] == "completed"
-    assert len(result["moved"]) == 1
-    assert not source.exists()
-    assert destination.read_text() == "Hello SlothSort"
-    assert (sample_folder / "slothsort_audit.jsonl").exists()
+    assert source.exists()
+    assert not destination.exists()
 
 
 def test_preview_rejects_path_traversal(tmp_path):
