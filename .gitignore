@@ -1,0 +1,24 @@
+
+# Python virtual environments
+.venv/
+.venv_broken/
+
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment variables and secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Logs and generated audit records
+*.log
+slothsort_audit.jsonl
+**/slothsort_audit.jsonl
+
+# Local sample data
+sample_data/
